@@ -3,6 +3,7 @@
 ## Repository History
 
 - 2026-08-24: Initialized the local folder as a Git repository.
+- 2026-08-24: Created the private GitHub repository `https://github.com/GloriaMarian/git` and pushed `main`.
 - 2026-08-24: No application stack, package manager, architecture, or deployment target has been selected.
 
 ## Durable Decisions
