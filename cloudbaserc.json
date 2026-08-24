@@ -1,0 +1,19 @@
+{
+  "envId": "qingheng-family-d5fcrhrgab9855c5",
+  "functionRoot": "./cloudbase/functions",
+  "functions": [
+    {
+      "name": "qingheng-api",
+      "dir": "./cloudbase/functions/qingheng-api",
+      "type": "Event",
+      "handler": "index.main",
+      "runtime": "Nodejs20.19",
+      "timeout": 60,
+      "memorySize": 512,
+      "description": "轻衡账号、同步与健康分析接口",
+      "envVariables": {
+        "QH_ENV_ID": "qingheng-family-d5fcrhrgab9855c5"
+      }
+    }
+  ]
+}

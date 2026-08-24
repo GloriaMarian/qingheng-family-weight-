@@ -1,0 +1,14 @@
+{
+  "name": "qingheng-api",
+  "version": "1.0.0",
+  "private": true,
+  "main": "index.js",
+  "scripts": {
+    "start": "node server.cjs"
+  },
+  "dependencies": {
+    "@cloudbase/node-sdk": "^3.10.0",
+    "express": "^5.1.0",
+    "serverless-http": "^4.0.0"
+  }
+}

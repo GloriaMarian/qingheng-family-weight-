@@ -1,0 +1,1 @@
+ALTER TABLE `profiles` ADD `ai_provider` text DEFAULT 'rules' NOT NULL;
