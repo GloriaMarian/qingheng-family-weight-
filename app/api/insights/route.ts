@@ -1,21 +1,16 @@
 import { env } from "cloudflare:workers";
+import {
+  buildInsightPrompt,
+  isInsightContent,
+  providerErrorMessage,
+  resolveProviderEndpoint,
+  type InsightContent,
+  type OnlineAiProvider,
+} from "../../ai-insight";
 import { getLocalUser, ownerKey } from "../../auth";
 import type { AiProvider, DailyInsight, LifeStage } from "../../types";
 
 export const runtime = "edge";
-
-type InsightContent = Pick<
-  DailyInsight,
-  | "summary"
-  | "weightReview"
-  | "nutritionReview"
-  | "lifestyleReview"
-  | "dataQuality"
-  | "factors"
-  | "prediction"
-  | "actions"
-  | "safetyNote"
->;
 
 const SPECIAL_STAGES = new Set<LifeStage>([
   "infant",
@@ -25,29 +20,8 @@ const SPECIAL_STAGES = new Set<LifeStage>([
   "postpartum",
 ]);
 
-function isInsight(value: unknown): value is InsightContent {
-  if (!value || typeof value !== "object") return false;
-  const item = value as Partial<InsightContent>;
-  return (
-    typeof item.summary === "string" &&
-    typeof item.weightReview === "string" &&
-    typeof item.nutritionReview === "string" &&
-    typeof item.lifestyleReview === "string" &&
-    typeof item.dataQuality === "string" &&
-    typeof item.prediction === "string" &&
-    typeof item.safetyNote === "string" &&
-    Array.isArray(item.factors) &&
-    item.factors.length >= 1 &&
-    item.factors.length <= 6 &&
-    item.factors.every((factor) => typeof factor === "string") &&
-    Array.isArray(item.actions) &&
-    item.actions.length === 5 &&
-    item.actions.every((action) => typeof action === "string")
-  );
-}
-
 function cleanFallback(value: unknown): InsightContent {
-  if (isInsight(value)) return value;
+  if (isInsightContent(value)) return value;
   return {
     summary: "今天的记录已保存。继续保持相近时间称重，会更容易看清真实趋势。",
     weightReview: "体重记录不足时，应先积累相近条件下的晨重，不根据单日数字判断真实增减。",
@@ -67,37 +41,12 @@ function cleanFallback(value: unknown): InsightContent {
   };
 }
 
-function withFallbackNotice(
-  fallback: InsightContent,
-  provider: Exclude<AiProvider, "rules">,
-) {
-  const name = provider === "deepseek" ? "DeepSeek" : "通义千问";
-  return {
-    ...fallback,
-    source: "rules" as const,
-    provider: "rules" as const,
-    summary: `${fallback.summary}（${name} 暂不可用，已自动使用本地分析。）`,
-  };
-}
-
 async function digest(value: string) {
   const bytes = new TextEncoder().encode(value);
   const result = await crypto.subtle.digest("SHA-256", bytes);
   return Array.from(new Uint8Array(result))
     .map((part) => part.toString(16).padStart(2, "0"))
     .join("");
-}
-
-function buildPrompt(aggregateInput: Record<string, unknown>, special: boolean) {
-  return [
-    "你是轻衡的健康记录解释助手。只能解释下方输入中的确定性指标和预测，不能创造新数字、诊断疾病、羞辱用户或承诺结果。",
-    "请用温和、具体、易懂的中文返回一个 JSON 对象，不要使用 Markdown，不要添加 JSON 之外的文字。",
-    "JSON 必须包含：summary（总体总结）、weightReview（体重趋势解读）、nutritionReview（餐食与热量解读）、lifestyleReview（睡眠活动饮水解读）、dataQuality（记录完整度与局限）、factors（1至6条可能因素）、prediction（只能复述输入中的确定性预测，无预测时明确记录不足）、actions（正好5条可执行建议）、safetyNote（安全提醒）。",
-    special
-      ? "这是儿童、青少年、孕期或产后等特殊阶段：不得提出热量限制、减脂目标或体脂判断，建议由监护人或专业人员确认。"
-      : "建议应关注长期习惯与趋势，不给极端热量限制。",
-    `数据：${JSON.stringify(aggregateInput)}`,
-  ].join("\n");
 }
 
 function extractChatText(value: unknown) {
@@ -113,12 +62,14 @@ async function callProvider({
   endpoint,
   model,
   prompt,
+  provider,
   signal,
 }: {
   apiKey: string;
   endpoint: string;
   model: string;
   prompt: string;
+  provider: OnlineAiProvider;
   signal: AbortSignal;
 }) {
   const response = await fetch(endpoint, {
@@ -139,18 +90,19 @@ async function callProvider({
       max_tokens: 1600,
     }),
   });
-  if (!response.ok) throw new Error(`provider ${response.status}`);
+  if (!response.ok) {
+    throw new Error(providerErrorMessage(provider, response.status));
+  }
   const raw = (await response.json()) as unknown;
   const text = extractChatText(raw);
   if (!text) throw new Error("empty provider response");
   const result = JSON.parse(text) as unknown;
-  if (!isInsight(result)) throw new Error("invalid provider response");
+  if (!isInsightContent(result)) throw new Error("AI 返回内容缺少必要字段");
   return result;
 }
 
 export async function POST(request: Request) {
   const user = await getLocalUser();
-  if (!user) return Response.json({ error: "请先登录" }, { status: 401 });
   if (Number(request.headers.get("content-length") ?? 0) > 80_000) {
     return Response.json({ error: "请求过大" }, { status: 413 });
   }
@@ -177,38 +129,41 @@ export async function POST(request: Request) {
     return Response.json({ ...fallback, source: "rules", provider: "rules" });
   }
 
+  const onlineProvider = provider as OnlineAiProvider;
+  const apiKey = request.headers.get("x-provider-api-key")?.trim() ?? "";
+  if (!apiKey || apiKey.length > 512) {
+    return Response.json(
+      { error: "请填写自己的 API Key，或使用网页登录分析" },
+      { status: 400 },
+    );
+  }
+  let endpoint: string;
+  try {
+    endpoint = resolveProviderEndpoint(
+      onlineProvider,
+      request.headers.get("x-provider-base-url") ?? undefined,
+    );
+  } catch (error) {
+    return Response.json(
+      { error: error instanceof Error ? error.message : "AI 服务地址不正确" },
+      { status: 400 },
+    );
+  }
+
   const runtimeEnv = env as unknown as {
-    DEEPSEEK_API_KEY?: string;
     DEEPSEEK_MODEL?: string;
-    DASHSCOPE_API_KEY?: string;
     QWEN_MODEL?: string;
     DB?: D1Database;
   };
-  const apiKey =
-    provider === "deepseek"
-      ? runtimeEnv.DEEPSEEK_API_KEY
-      : runtimeEnv.DASHSCOPE_API_KEY;
-  if (!apiKey) return Response.json(withFallbackNotice(fallback, provider));
 
-  const owner = ownerKey(user);
-  if (runtimeEnv.DB) {
+  const owner = user ? ownerKey(user) : null;
+  if (runtimeEnv.DB && owner) {
     const owned = await runtimeEnv.DB.prepare(
       "SELECT 1 FROM profiles WHERE id = ? AND owner_email = ? LIMIT 1",
     )
       .bind(profileId, owner)
       .first();
     if (!owned) return Response.json({ error: "无权访问该档案" }, { status: 403 });
-    const count = await runtimeEnv.DB.prepare(
-      "SELECT COUNT(*) AS total FROM ai_insights WHERE owner_email = ? AND profile_id = ? AND local_date = ? AND source = 'ai'",
-    )
-      .bind(owner, profileId, date)
-      .first<{ total: number }>();
-    if (Number(count?.total ?? 0) >= 2) {
-      return Response.json(
-        { error: "今日在线 AI 分析次数已用完", fallback: { ...fallback, source: "rules", provider: "rules" } },
-        { status: 429 },
-      );
-    }
   }
 
   const aggregateInput = {
@@ -227,19 +182,17 @@ export async function POST(request: Request) {
   try {
     const result = await callProvider({
       apiKey,
-      endpoint:
-        provider === "deepseek"
-          ? "https://api.deepseek.com/chat/completions"
-          : "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions",
+      endpoint,
       model:
         provider === "deepseek"
-          ? runtimeEnv.DEEPSEEK_MODEL || "deepseek-chat"
+          ? runtimeEnv.DEEPSEEK_MODEL || "deepseek-v4-flash"
           : runtimeEnv.QWEN_MODEL || "qwen-plus",
-      prompt: buildPrompt(aggregateInput, SPECIAL_STAGES.has(stage)),
+      prompt: buildInsightPrompt(aggregateInput, SPECIAL_STAGES.has(stage)),
+      provider: onlineProvider,
       signal: controller.signal,
     });
 
-    if (runtimeEnv.DB) {
+    if (runtimeEnv.DB && owner) {
       const record: DailyInsight = {
         id: crypto.randomUUID(),
         profileId,
@@ -264,8 +217,10 @@ export async function POST(request: Request) {
         .run();
     }
     return Response.json({ ...result, source: "ai", provider });
-  } catch {
-    return Response.json(withFallbackNotice(fallback, provider));
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "AI 分析失败，请稍后重试";
+    return Response.json({ error: message }, { status: 502 });
   } finally {
     clearTimeout(timeout);
   }

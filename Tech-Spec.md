@@ -37,3 +37,32 @@ The destination `AGENTS.md`, `MEMORY.md`, and `.git/` are retained and updated i
 ## Rollback
 
 The migration does not alter the legacy project. Before any commit, rollback consists of removing only the newly added destination files while retaining the destination `.git`, `AGENTS.md`, and `MEMORY.md`. No online rollback is required because this task performs no deployment.
+
+## 2026-08-25 User-Connected AI Design
+
+### Client Contract
+
+- `rules`: generate and save the deterministic `createRuleInsight` result locally.
+- `deepseek` / `qwen` with API key: send the selected provider in the JSON body and the ephemeral key in `x-provider-api-key`.
+- Qwen may also send `x-provider-base-url`; the server accepts only HTTPS URLs on documented Alibaba Cloud DashScope or `*.maas.aliyuncs.com` hosts.
+- The API key exists only in React component memory and is omitted from `AppState`, IndexedDB, D1, CloudBase state, logs, and error messages.
+
+### Provider Calls
+
+- DeepSeek endpoint: `https://api.deepseek.com/chat/completions`; default model `deepseek-v4-flash`.
+- Qwen default endpoint: `https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions`; default model `qwen-plus`, with an optional validated Model Studio API host.
+- Both providers use the existing structured JSON contract and the same health-safety prompt.
+- Missing or rejected credentials return an explicit non-2xx error. The server does not substitute a local result for an explicitly selected online provider.
+
+### Official Chat Handoff
+
+- DeepSeek opens `https://chat.deepseek.com/`; Qwen opens `https://chat.qwen.ai/`.
+- The browser copies a prompt built from the same daily aggregate used by API analysis.
+- Imported text may be plain JSON or a JSON Markdown fence. It is validated against the shared insight schema before saving.
+
+### Verification
+
+1. Unit-test prompt construction and imported result parsing.
+2. Test the server-side provider credential and endpoint validation helpers.
+3. Run `pnpm lint`, `pnpm test`, `pnpm build`, `pnpm cloudbase:build`, and `pnpm cloudbase:check`.
+4. Verify the Today page on desktop and mobile with local, DeepSeek, and Qwen selections.

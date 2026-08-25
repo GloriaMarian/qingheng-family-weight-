@@ -37,3 +37,10 @@
 - The existing public Sites deployment is `https://qingheng-family-weight.annestromjsbsjs62727.chatgpt.site`; it was verified active at version 8 on 2026-08-24 without deploying or changing access.
 - `打开轻衡网站.cmd` starts the local server with the bundled Codex runtime and opens the site in the default browser.
 - The desktop shortcut `打开轻衡网站.lnk` points to that launcher. The repository itself remains at `C:\Users\Administrator\Desktop\git` until the active Codex task releases the directory for a physical rename.
+
+## User-Connected AI
+
+- 2026-08-25: The Today page separates local rules, DeepSeek, and Qwen into genuinely different flows. Online providers use a user-supplied API key or an official-chat copy-and-import handoff; Qingheng never collects provider account passwords.
+- User API keys remain only in current React component memory, are forwarded in `x-provider-api-key`, and are not written to `AppState`, IndexedDB, D1, CloudBase state, documentation, or logs.
+- Qwen custom API hosts are restricted to documented Alibaba Cloud HTTPS domains. Explicit online-provider failures return actionable errors instead of silently substituting local analysis.
+- DeepSeek defaults to `deepseek-v4-flash`; model names may be overridden by non-secret environment variables.

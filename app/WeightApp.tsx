@@ -1,6 +1,12 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import {
+  buildInsightPrompt,
+  parseInsightResponse,
+  type InsightContent,
+  type OnlineAiProvider,
+} from "./ai-insight";
 import { COMMON_FOODS } from "./food-data";
 import {
   calculateExerciseCalories,
@@ -85,6 +91,14 @@ const AI_PROVIDER_LABELS: Record<AiProvider, string> = {
   rules: "本地分析",
   deepseek: "DeepSeek",
   qwen: "通义千问",
+};
+const AI_CHAT_URLS: Record<OnlineAiProvider, string> = {
+  deepseek: "https://chat.deepseek.com/",
+  qwen: "https://chat.qwen.ai/",
+};
+const AI_KEY_URLS: Record<OnlineAiProvider, string> = {
+  deepseek: "https://platform.deepseek.com/api_keys",
+  qwen: "https://bailian.console.aliyun.com/?apiKey=1#/api-key",
 };
 
 function uid(prefix: string) {
@@ -278,11 +292,19 @@ export default function WeightApp({ user: initialUser }: { user: AppUser }) {
     const hasEveningWeight = todayWeights.some(
       (entry) => entry.period === "evening",
     );
-    if (ready && activeProfile && hasEveningWeight && !latestInsight && !aiBusy) {
+    if (
+      ready &&
+      activeProfile &&
+      (activeProfile.aiProvider ?? "rules") === "rules" &&
+      hasEveningWeight &&
+      !latestInsight &&
+      !aiBusy
+    ) {
       void generateInsight();
     }
   }, [
     activeProfile?.id,
+    activeProfile?.aiProvider,
     aiBusy,
     appState.weights.length,
     date,
@@ -430,61 +452,32 @@ export default function WeightApp({ user: initialUser }: { user: AppUser }) {
     setExerciseMinutes("30");
   }
 
-  async function generateInsight() {
-    if (!activeProfile || aiBusy) return;
-    setAiBusy(true);
-    const fallback = createRuleInsight(
-      activeProfile,
-      appState.weights,
-      appState.meals,
+  function insightAggregateInput() {
+    return {
       date,
-      todayContext,
-      todayExercises,
-    );
-    let generated = {
-      ...fallback,
-      source: "rules" as const,
-      provider: "rules" as const,
+      stage: activeProfile?.stage,
+      metrics,
+      deterministicPrediction: prediction,
+      weights: todayWeights,
+      meals: todayMeals.map((meal) => ({
+        mealType: meal.mealType,
+        foodName: meal.foodName,
+        calories: meal.calories,
+      })),
+      exercises: todayExercises.map((entry) => ({
+        activityName: entry.activityName,
+        minutes: entry.minutes,
+        calories: entry.calories,
+        standard: entry.standard,
+      })),
+      context: todayContext,
     };
-    if (user) {
-      try {
-        const response = await fetch("/api/insights", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            profileId: activeProfile.id,
-            stage: activeProfile.stage,
-            provider: activeProfile.aiProvider ?? "rules",
-            date,
-            metrics,
-            prediction,
-            todayWeights,
-            meals: todayMeals.map((meal) => ({
-              mealType: meal.mealType,
-              foodName: meal.foodName,
-              calories: meal.calories,
-            })),
-            context: todayContext,
-            exercises: todayExercises.map((entry) => ({
-              activityName: entry.activityName,
-              minutes: entry.minutes,
-              calories: entry.calories,
-              standard: entry.standard,
-            })),
-            fallback,
-          }),
-        });
-        if (response.ok) generated = await response.json();
-        if (!response.ok) {
-          const problem = (await response.json().catch(() => null)) as {
-            fallback?: typeof generated;
-          } | null;
-          if (problem?.fallback) generated = problem.fallback;
-        }
-      } catch {
-        generated = { ...fallback, source: "rules", provider: "rules" };
-      }
-    }
+  }
+
+  function saveGeneratedInsight(
+    generated: InsightContent & Pick<DailyInsight, "source" | "provider">,
+  ) {
+    if (!activeProfile) return;
     const insight: DailyInsight = {
       id: uid("insight"),
       profileId: activeProfile.id,
@@ -505,7 +498,103 @@ export default function WeightApp({ user: initialUser }: { user: AppUser }) {
         insight,
       ],
     }));
-    setAiBusy(false);
+  }
+
+  function externalInsightPrompt() {
+    if (!activeProfile) return "";
+    return buildInsightPrompt(
+      insightAggregateInput(),
+      ["infant", "child", "teen", "pregnant", "postpartum"].includes(
+        activeProfile.stage,
+      ),
+    );
+  }
+
+  function importExternalInsight(provider: OnlineAiProvider, value: string) {
+    const result = parseInsightResponse(value);
+    if (!result) {
+      return "无法导入：请复制 AI 返回的完整 JSON，且建议必须正好 5 条。";
+    }
+    saveGeneratedInsight({ ...result, source: "ai", provider });
+    return `已导入 ${AI_PROVIDER_LABELS[provider]} 的分析结果。`;
+  }
+
+  async function generateInsight(options?: {
+    apiKey?: string;
+    qwenBaseUrl?: string;
+  }) {
+    if (!activeProfile || aiBusy) return;
+    const fallback = createRuleInsight(
+      activeProfile,
+      appState.weights,
+      appState.meals,
+      date,
+      todayContext,
+      todayExercises,
+    );
+    const provider = activeProfile.aiProvider ?? "rules";
+    if (provider === "rules") {
+      saveGeneratedInsight({
+        ...fallback,
+        source: "rules",
+        provider: "rules",
+      });
+      return "已使用本地规则生成分析，没有连接外部 AI。";
+    }
+
+    const apiKey = options?.apiKey?.trim() ?? "";
+    if (!apiKey) return "请先填写自己的 API Key，或使用网页登录分析。";
+    setAiBusy(true);
+    try {
+      const headers: Record<string, string> = {
+        "content-type": "application/json",
+        "x-provider-api-key": apiKey,
+      };
+      if (provider === "qwen" && options?.qwenBaseUrl?.trim()) {
+        headers["x-provider-base-url"] = options.qwenBaseUrl.trim();
+      }
+      const response = await fetch("/api/insights", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          profileId: activeProfile.id,
+          stage: activeProfile.stage,
+          provider,
+          date,
+          metrics,
+          prediction,
+          todayWeights,
+          meals: todayMeals.map((meal) => ({
+            mealType: meal.mealType,
+            foodName: meal.foodName,
+            calories: meal.calories,
+          })),
+          context: todayContext,
+          exercises: todayExercises.map((entry) => ({
+            activityName: entry.activityName,
+            minutes: entry.minutes,
+            calories: entry.calories,
+            standard: entry.standard,
+          })),
+          fallback,
+        }),
+      });
+      const payload = (await response.json().catch(() => null)) as
+        | (InsightContent & Pick<DailyInsight, "source" | "provider">)
+        | { error?: string }
+        | null;
+      if (!response.ok || !payload || "error" in payload) {
+        return payload && "error" in payload && payload.error
+          ? payload.error
+          : "外部 AI 暂时无法完成分析，请稍后重试。";
+      }
+      saveGeneratedInsight(payload);
+      return `已使用你的 ${AI_PROVIDER_LABELS[provider]} API Key 完成分析；Key 未保存。`;
+    } catch {
+      return "连接外部 AI 失败，请检查网络后重试。";
+    } finally {
+      setAiBusy(false);
+    }
   }
 
   async function syncToCloud() {
@@ -788,9 +877,12 @@ export default function WeightApp({ user: initialUser }: { user: AppUser }) {
                 activeProfile={activeProfile}
                 aiBusy={aiBusy}
                 generateInsight={generateInsight}
+                getExternalInsightPrompt={externalInsightPrompt}
+                importExternalInsight={importExternalInsight}
                 insight={latestInsight}
                 date={date}
                 isToday={date === currentDate}
+                key={activeProfile.id}
                 metrics={metrics}
                 exerciseEstimate={exerciseEstimate}
                 exerciseMinutes={exerciseMinutes}
@@ -1007,6 +1099,8 @@ function TodayView({
   exerciseMinutes,
   exercisePresetId,
   generateInsight,
+  getExternalInsightPrompt,
+  importExternalInsight,
   insight,
   isToday,
   metrics,
@@ -1034,7 +1128,15 @@ function TodayView({
   exerciseEstimate: ReturnType<typeof calculateExerciseCalories>;
   exerciseMinutes: string;
   exercisePresetId: string;
-  generateInsight: () => void;
+  generateInsight: (options?: {
+    apiKey?: string;
+    qwenBaseUrl?: string;
+  }) => Promise<string | undefined>;
+  getExternalInsightPrompt: () => string;
+  importExternalInsight: (
+    provider: OnlineAiProvider,
+    value: string,
+  ) => string;
   insight?: DailyInsight;
   isToday: boolean;
   metrics: ReturnType<typeof dashboardMetrics> | null;
@@ -1056,6 +1158,54 @@ function TodayView({
   weightPeriod: WeightPeriod;
   weightValue: string;
 }) {
+  const provider = activeProfile.aiProvider ?? "rules";
+  const onlineProvider = provider === "rules" ? null : provider;
+  const [providerApiKey, setProviderApiKey] = useState("");
+  const [qwenBaseUrl, setQwenBaseUrl] = useState(
+    "https://dashscope.aliyuncs.com/compatible-mode/v1",
+  );
+  const [connectionMessage, setConnectionMessage] = useState("");
+  const [externalPrompt, setExternalPrompt] = useState("");
+  const [externalResponse, setExternalResponse] = useState("");
+
+  function chooseProvider(nextProvider: AiProvider) {
+    setProviderApiKey("");
+    setConnectionMessage("");
+    setExternalPrompt("");
+    setExternalResponse("");
+    onProviderChange(nextProvider);
+  }
+
+  async function runConnectedAnalysis() {
+    const message = await generateInsight({
+      apiKey: providerApiKey,
+      qwenBaseUrl,
+    });
+    setConnectionMessage(message ?? "");
+  }
+
+  async function copyExternalPrompt() {
+    if (!onlineProvider) return;
+    const prompt = getExternalInsightPrompt();
+    setExternalPrompt(prompt);
+    window.open(AI_CHAT_URLS[onlineProvider], "_blank", "noopener,noreferrer");
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setConnectionMessage(
+        `分析提示词已复制；请在 ${AI_PROVIDER_LABELS[onlineProvider]} 官网登录后粘贴发送。`,
+      );
+    } catch {
+      setConnectionMessage("浏览器未允许自动复制，请从下方提示词框手动复制。");
+    }
+  }
+
+  function importProviderResponse() {
+    if (!onlineProvider) return;
+    setConnectionMessage(
+      importExternalInsight(onlineProvider, externalResponse),
+    );
+  }
+
   const special = ["infant", "child", "teen", "pregnant", "postpartum"].includes(
     activeProfile.stage,
   );
@@ -1308,24 +1458,132 @@ function TodayView({
           {(activeProfile.aiProvider ?? "rules") === "rules" ? "衡" : "AI"}
         </div>
         <div className="insight-content">
-          <div className="provider-row">
-            <label>
-              <span>分析方式</span>
-              <select
-                onChange={(event) =>
-                  onProviderChange(event.target.value as AiProvider)
-                }
-                value={activeProfile.aiProvider ?? "rules"}
-              >
-                {Object.entries(AI_PROVIDER_LABELS).map(([value, label]) => (
-                  <option key={value} value={value}>{label}</option>
-                ))}
-              </select>
-            </label>
-            <p>
-              家人无需注册 AI 账号；在线 AI 未配置或暂时不可用时，会自动使用本地分析。
-            </p>
+          <div aria-label="选择分析方式" className="provider-picker">
+            {(Object.entries(AI_PROVIDER_LABELS) as Array<[AiProvider, string]>).map(
+              ([value, label]) => (
+                <button
+                  aria-pressed={provider === value}
+                  className={provider === value ? "provider-option active" : "provider-option"}
+                  key={value}
+                  onClick={() => chooseProvider(value)}
+                  type="button"
+                >
+                  <strong>{label}</strong>
+                  <span>
+                    {value === "rules"
+                      ? "不联网，立即生成"
+                      : value === "deepseek"
+                        ? "自己的 Key 或官网登录"
+                        : "自己的百炼 Key 或官网登录"}
+                  </span>
+                </button>
+              ),
+            )}
           </div>
+
+          {onlineProvider ? (
+            <div className="ai-connection-grid">
+              <section className="ai-method-panel">
+                <div>
+                  <span className="method-label">方式一 · 直接回到轻衡</span>
+                  <h3>用自己的 API Key 分析</h3>
+                  <p>分析结果会自动显示在下方，适合经常使用。</p>
+                </div>
+                <label className="ai-secret-field">
+                  <span>{AI_PROVIDER_LABELS[onlineProvider]} API Key</span>
+                  <input
+                    autoComplete="off"
+                    onChange={(event) => setProviderApiKey(event.target.value)}
+                    placeholder="请输入自己的 API Key"
+                    type="password"
+                    value={providerApiKey}
+                  />
+                </label>
+                {onlineProvider === "qwen" && (
+                  <label className="ai-secret-field">
+                    <span>API Host</span>
+                    <input
+                      onChange={(event) => setQwenBaseUrl(event.target.value)}
+                      placeholder="从百炼创建 Key 时复制 API Host"
+                      type="url"
+                      value={qwenBaseUrl}
+                    />
+                  </label>
+                )}
+                <div className="ai-method-actions">
+                  <button
+                    className="primary-button"
+                    disabled={aiBusy}
+                    onClick={() => void runConnectedAnalysis()}
+                    type="button"
+                  >
+                    {aiBusy ? "正在连接…" : `使用 ${AI_PROVIDER_LABELS[onlineProvider]} 分析`}
+                  </button>
+                  <a href={AI_KEY_URLS[onlineProvider]} rel="noreferrer" target="_blank">
+                    获取 API Key
+                  </a>
+                </div>
+                <small>Key 仅保留在当前页面内存中，经轻衡服务器转发给所选 AI；不会写入档案或数据库。</small>
+              </section>
+
+              <section className="ai-method-panel">
+                <div>
+                  <span className="method-label">方式二 · 不使用 API Key</span>
+                  <h3>登录 AI 官网分析</h3>
+                  <p>轻衡复制今日数据提示词，你在 AI 官网登录并发送，再把结果粘贴回来。</p>
+                </div>
+                <button
+                  className="secondary-button"
+                  onClick={() => void copyExternalPrompt()}
+                  type="button"
+                >
+                  复制数据并打开 {AI_PROVIDER_LABELS[onlineProvider]}
+                </button>
+                {externalPrompt && (
+                  <div className="ai-import-flow">
+                    <label>
+                      <span>已生成的分析提示词</span>
+                      <textarea readOnly rows={4} value={externalPrompt} />
+                    </label>
+                    <label>
+                      <span>粘贴 AI 返回的完整内容</span>
+                      <textarea
+                        onChange={(event) => setExternalResponse(event.target.value)}
+                        placeholder="支持纯 JSON 或 ```json 代码块"
+                        rows={5}
+                        value={externalResponse}
+                      />
+                    </label>
+                    <button
+                      className="secondary-button"
+                      disabled={!externalResponse.trim()}
+                      onClick={importProviderResponse}
+                      type="button"
+                    >
+                      导入这份分析
+                    </button>
+                  </div>
+                )}
+              </section>
+            </div>
+          ) : (
+            <div className="local-analysis-panel">
+              <div>
+                <strong>本地规则分析</strong>
+                <p>只使用轻衡已经计算好的体重、饮食、睡眠和活动规则，不联网，也不需要任何 AI 账号。</p>
+              </div>
+              <button
+                className="secondary-button"
+                disabled={aiBusy}
+                onClick={() => void generateInsight().then((message) => setConnectionMessage(message ?? ""))}
+                type="button"
+              >
+                {aiBusy ? "分析中…" : insight ? "刷新本地分析" : "生成本地分析"}
+              </button>
+            </div>
+          )}
+
+          {connectionMessage && <p className="ai-connection-message" role="status">{connectionMessage}</p>}
           <div className="card-heading compact">
             <div>
               <span className="section-kicker">
@@ -1335,7 +1593,6 @@ function TodayView({
               </span>
               <h2>{insight ? insight.summary : "让记录变成看得懂的趋势"}</h2>
             </div>
-            <button className="secondary-button" disabled={aiBusy} onClick={generateInsight} type="button">{aiBusy ? "分析中…" : insight ? "刷新分析" : "生成今日分析"}</button>
           </div>
           {insight ? (
             <div className="insight-grid">

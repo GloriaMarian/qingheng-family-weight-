@@ -25,6 +25,10 @@ test("构建产物与核心页面已经生成", async () => {
   assert.match(app, /当天平均体重/);
   assert.match(app, /计算依据/);
   assert.match(app, /DeepSeek/);
+  assert.match(app, /用自己的 API Key 分析/);
+  assert.match(app, /登录 AI 官网分析/);
+  assert.match(app, /不会写入档案或数据库/);
+  assert.doesNotMatch(app, /在线 AI 未配置或暂时不可用时，会自动使用本地分析/);
   assert.doesNotMatch(`${page}${layout}${app}`, /codex-preview|SkeletonPreview|react-loading-skeleton/);
 });
 

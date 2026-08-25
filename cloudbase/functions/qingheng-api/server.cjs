@@ -11,7 +11,6 @@ const COLLECTIONS = {
   sessions: "qh_sessions",
   states: "qh_states",
   limits: "qh_rate_limits",
-  aiDaily: "qh_ai_daily",
 };
 
 let tcb = cloudbase.init({ env: ENV_ID });
@@ -272,9 +271,44 @@ function fallbackInsight(value) {
   };
 }
 
-async function callAi(provider, apiKey, input) {
-  const endpoint = provider === "deepseek" ? "https://api.deepseek.com/chat/completions" : "https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions";
-  const model = provider === "deepseek" ? process.env.DEEPSEEK_MODEL || "deepseek-chat" : process.env.QWEN_MODEL || "qwen-plus";
+function providerEndpoint(provider, qwenBaseUrl) {
+  if (provider === "deepseek") return "https://api.deepseek.com/chat/completions";
+  const raw = String(qwenBaseUrl || "https://dashscope.aliyuncs.com/compatible-mode/v1").trim();
+  let url;
+  try {
+    url = new URL(raw);
+  } catch {
+    throw new Error("千问 API Host 格式不正确");
+  }
+  const allowed = url.hostname === "dashscope.aliyuncs.com" || url.hostname === "dashscope-intl.aliyuncs.com" || url.hostname === "dashscope-us.aliyuncs.com" || url.hostname.endsWith(".maas.aliyuncs.com");
+  if (url.protocol !== "https:" || !allowed) throw new Error("千问 API Host 必须使用阿里云官方 HTTPS 地址");
+  url.search = "";
+  url.hash = "";
+  const path = url.pathname.replace(/\/+$/, "");
+  if (path.endsWith("/chat/completions")) {
+    url.pathname = path;
+    return url.toString();
+  }
+  if (!path.endsWith("/compatible-mode/v1")) throw new Error("千问 API Host 应以 /compatible-mode/v1 结尾");
+  url.pathname = `${path}/chat/completions`;
+  return url.toString();
+}
+
+function providerError(provider, status) {
+  const name = provider === "deepseek" ? "DeepSeek" : "千问";
+  if (status === 401 || status === 403) return `${name} API Key 无效、无权限或与所选地域不匹配`;
+  if (status === 402) return `${name} API 余额不足`;
+  if (status === 429) return `${name} 请求过于频繁，请稍后重试`;
+  return `${name} 暂时无法完成分析（${status}）`;
+}
+
+function validInsight(value) {
+  return value && typeof value === "object" && typeof value.summary === "string" && typeof value.weightReview === "string" && typeof value.nutritionReview === "string" && typeof value.lifestyleReview === "string" && typeof value.dataQuality === "string" && typeof value.prediction === "string" && typeof value.safetyNote === "string" && Array.isArray(value.factors) && value.factors.length >= 1 && value.factors.length <= 6 && value.factors.every((item) => typeof item === "string") && Array.isArray(value.actions) && value.actions.length === 5 && value.actions.every((item) => typeof item === "string");
+}
+
+async function callAi(provider, apiKey, qwenBaseUrl, input) {
+  const endpoint = providerEndpoint(provider, qwenBaseUrl);
+  const model = provider === "deepseek" ? process.env.DEEPSEEK_MODEL || "deepseek-v4-flash" : process.env.QWEN_MODEL || "qwen-plus";
   const special = ["infant", "child", "teen", "pregnant", "postpartum"].includes(String(input.stage));
   const prompt = [
     "你是轻衡的健康记录解释助手。只能解释输入中的确定性指标，不能创造新数字、诊断疾病或承诺结果。",
@@ -286,9 +320,11 @@ async function callAi(provider, apiKey, input) {
   const timeout = setTimeout(() => controller.abort(), 15000);
   try {
     const response = await fetch(endpoint, { method: "POST", signal: controller.signal, headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" }, body: JSON.stringify({ model, messages: [{ role: "system", content: "严格遵循要求，只返回 JSON。" }, { role: "user", content: prompt }], response_format: { type: "json_object" }, temperature: 0.25, max_tokens: 1800 }) });
-    if (!response.ok) throw new Error(`provider ${response.status}`);
+    if (!response.ok) throw new Error(providerError(provider, response.status));
     const result = await response.json();
-    return JSON.parse(result?.choices?.[0]?.message?.content || "null");
+    const insight = JSON.parse(result?.choices?.[0]?.message?.content || "null");
+    if (!validInsight(insight)) throw new Error("AI 返回内容缺少必要字段");
+    return insight;
   } finally {
     clearTimeout(timeout);
   }
@@ -297,28 +333,23 @@ async function callAi(provider, apiKey, input) {
 routes("/api/insights", async (req, res) => {
   if (req.method !== "POST") return res.status(405).json({ error: "请求方式不支持" });
   const user = await sessionUser(req);
-  if (!user) return res.status(401).json({ error: "请先登录" });
   const input = req.body || {};
   const fallback = fallbackInsight(input.fallback);
   const provider = input.provider === "deepseek" || input.provider === "qwen" ? input.provider : "rules";
   if (!input.profileId || !/^\d{4}-\d{2}-\d{2}$/.test(String(input.date || ""))) return res.status(400).json({ error: "缺少档案或日期" });
-  const state = await getDoc(COLLECTIONS.states, user.id);
-  if (!state?.state?.profiles?.some((profile) => profile.id === input.profileId)) return res.status(403).json({ error: "无权访问该档案" });
   if (provider === "rules") return res.json({ ...fallback, source: "rules", provider: "rules" });
-  const apiKey = provider === "deepseek" ? process.env.DEEPSEEK_API_KEY : process.env.DASHSCOPE_API_KEY;
-  const providerName = provider === "deepseek" ? "DeepSeek" : "通义千问";
-  if (!apiKey) return res.json({ ...fallback, source: "rules", provider: "rules", summary: `${fallback.summary}（${providerName} 尚未配置，已使用本地分析。）` });
-  const dailyId = sha256(`${user.id}:${input.profileId}:${input.date}`);
-  const daily = await getDoc(COLLECTIONS.aiDaily, dailyId);
-  if (Number(daily?.count || 0) >= 2) return res.status(429).json({ error: "今日在线 AI 分析次数已用完", fallback: { ...fallback, source: "rules", provider: "rules" } });
+  const apiKey = String(req.get("x-provider-api-key") || "").trim();
+  if (!apiKey || apiKey.length > 512) return res.status(400).json({ error: "请填写自己的 API Key，或使用网页登录分析" });
+  if (user) {
+    const state = await getDoc(COLLECTIONS.states, user.id);
+    if (!state?.state?.profiles?.some((profile) => profile.id === input.profileId)) return res.status(403).json({ error: "无权访问该档案" });
+  }
   try {
-    const result = await callAi(provider, apiKey, input);
-    if (!result || !Array.isArray(result.actions) || result.actions.length !== 5) throw new Error("invalid ai response");
-    await setDoc(COLLECTIONS.aiDaily, dailyId, { accountId: user.id, profileId: input.profileId, date: input.date, count: Number(daily?.count || 0) + 1, updatedAt: nowIso() });
+    const result = await callAi(provider, apiKey, req.get("x-provider-base-url"), input);
     return res.json({ ...result, source: "ai", provider });
   } catch (error) {
-    console.error("insights", error);
-    return res.json({ ...fallback, source: "rules", provider: "rules", summary: `${fallback.summary}（${providerName} 暂不可用，已使用本地分析。）` });
+    console.error("insights provider failed");
+    return res.status(502).json({ error: error instanceof Error ? error.message : "AI 分析失败，请稍后重试" });
   }
 });
 
