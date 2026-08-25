@@ -50,3 +50,4 @@
 - 2026-08-25: Qingheng uses a warm, cute-but-calm visual direction: cream canvas, strawberry pink, mint, lavender, and peach accents, with rounded cards and soft layered shadows.
 - Navigation and section decoration use small Unicode symbols and CSS shapes instead of a new icon dependency or downloaded decorative assets. Symbols remain supplementary to text labels and do not replace accessible names.
 - Functional hierarchy, health-content readability, desktop/mobile layout structure, and reduced-motion behavior take priority over decoration.
+- 2026-08-25: Decorative stickers are implemented as accessible-hidden React markup and CSS using emoji glyphs, pastel paper borders, and reserved card-corner space. They must remain non-interactive, dependency-free, and secondary to health content.

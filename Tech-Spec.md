@@ -88,3 +88,24 @@ The migration does not alter the legacy project. Before any commit, rollback con
 1. Run lint, automated tests, primary build, CloudBase frontend build, and CloudBase function syntax check.
 2. Check generated markup for the navigation icon class and new theme copy-independent hooks.
 3. Review responsive breakpoints and overflow-prone grids statically when browser screenshot automation is not authorized.
+
+## 2026-08-25 Sticker Implementation
+
+### Structure
+
+- Stickers are plain React markup using `.cute-sticker`, a themed modifier, an emoji glyph, and a short caption.
+- Every sticker container uses `aria-hidden="true"`, `pointer-events: none`, and `user-select: none` because it conveys no required information.
+- Cards with an absolute corner sticker use `.stickered-card` to reserve bottom padding rather than overlaying existing content.
+- The AI sticker stays in the normal first-column layout with the existing analysis mark because that card clips decorative overflow.
+
+### Responsive Rules
+
+- Desktop sidebar includes the encouragement sticker; the mobile bottom navigation does not duplicate it.
+- Below 760 px, card stickers reduce glyph and caption sizes while retaining the reserved corner space.
+- Sticker transforms are static. Existing reduced-motion protection therefore needs no extra animation rule.
+
+### Verification
+
+1. Assert sticker hooks and representative captions in the rendered-page source test.
+2. Run lint, automated tests, the primary production build, the CloudBase build, and the CloudBase function syntax check.
+3. Confirm the local route returns successfully and review the final staged diff before commit.

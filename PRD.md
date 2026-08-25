@@ -83,3 +83,24 @@ Make Qingheng feel warmer, friendlier, and more memorable without weakening the 
 4. Hover and focus feedback remains visible, with motion disabled when reduced motion is preferred.
 5. Desktop and mobile layouts retain their current content order and do not introduce horizontal overflow.
 6. No feature logic, persisted data contract, route, dependency, or deployment setting changes.
+
+## 2026-08-25 Decorative Sticker Layer
+
+### Objective
+
+Add a small set of cartoon-like stickers that make the refreshed interface feel more playful without competing with health data or primary actions.
+
+### Placement and Content
+
+- A small encouragement sticker sits near the sidebar privacy area on desktop.
+- Weight, meals, and exercise cards receive one themed sticker in reserved lower-corner space.
+- The AI analysis card receives a compact sparkle sticker beside its existing mark.
+- Stickers use short positive phrases and familiar emoji-style characters; they remain decorative and are hidden from assistive technology.
+
+### Acceptance Criteria
+
+1. Stickers never cover inputs, values, buttons, safety notes, or provider controls.
+2. Desktop stickers feel lightly tilted and paper-like, with a white border and pastel shadow.
+3. Mobile stickers become more compact and keep all cards within the viewport.
+4. Sticker content is decorative only, has no click behavior, and does not change the document reading order.
+5. No bitmap download, SVG illustration, icon package, new dependency, or feature-logic change is introduced.

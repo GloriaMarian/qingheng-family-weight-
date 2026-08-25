@@ -144,6 +144,29 @@ a { color: inherit; text-decoration: none; }
 .status-dot { width: 8px; height: 8px; flex: none; border-radius: 50%; background: #69a989; box-shadow: 0 0 0 5px rgba(105,169,137,.12), 0 0 0 8px rgba(255,255,255,.65); }
 .text-button { padding: 0; border: 0; color: var(--green); background: transparent; cursor: pointer; text-align: left; }
 
+.cute-sticker {
+  display: inline-flex;
+  width: fit-content;
+  min-height: 48px;
+  padding: 6px 11px 6px 7px;
+  align-items: center;
+  gap: 6px;
+  border: 3px solid rgba(255,255,255,.96);
+  border-radius: 18px 18px 18px 7px;
+  pointer-events: none;
+  user-select: none;
+  box-shadow: 0 9px 20px rgba(102,75,87,.14), inset 0 1px 0 rgba(255,255,255,.8);
+  transform-origin: center;
+}
+.cute-sticker > span { display: grid; width: 31px; height: 31px; flex: none; place-items: center; border-radius: 12px; background: rgba(255,255,255,.62); font-size: 21px; line-height: 1; }
+.cute-sticker > small { color: #675d68; font-size: 10px; font-weight: 800; letter-spacing: .02em; white-space: nowrap; }
+.sidebar-sticker { margin: 0 auto 1px; transform: rotate(-3deg); }
+.sticker-bunny { border-color: #fff; background: linear-gradient(145deg, #ffe6ec, #f9d5df); }
+.sticker-bear { border-color: #fff; background: linear-gradient(145deg, #ffe7dc, #ffd4c5); transform: rotate(-4deg); }
+.sticker-strawberry { border-color: #fff; background: linear-gradient(145deg, #ffe4e9, #f7cbd5); transform: rotate(3deg); }
+.sticker-chick { border-color: #fff; background: linear-gradient(145deg, #fff0bd, #ffe39a); transform: rotate(-3deg); }
+.sticker-sparkle { border-color: #fff; background: linear-gradient(145deg, #eee4f8, #ddcff0); transform: rotate(4deg); }
+
 .main-content {
   width: calc(100% - 248px);
   min-height: 100vh;
@@ -196,6 +219,8 @@ a { color: inherit; text-decoration: none; }
   box-shadow: var(--shadow);
 }
 .card { position: relative; padding: 24px; transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+.stickered-card { padding-bottom: 78px; }
+.card-sticker { position: absolute; right: 18px; bottom: 15px; z-index: 2; }
 .card:hover { border-color: rgba(225, 196, 203, .95); box-shadow: var(--shadow-hover); transform: translateY(-2px); }
 .span-2 { grid-column: span 2; }
 .span-3 { grid-column: 1 / -1; }
@@ -354,7 +379,11 @@ a { color: inherit; text-decoration: none; }
 .energy-direction { margin: 17px 0 4px; color: var(--ink-soft); font-size: 13px; line-height: 1.7; }
 
 .insight-card { display: grid; grid-template-columns: auto 1fr; gap: 17px; overflow: hidden; background: linear-gradient(135deg, rgba(255,255,255,.97), rgba(242,231,247,.84) 54%, rgba(225,244,236,.9)); }
+.insight-mascots { display: grid; align-content: start; justify-items: start; gap: 14px; }
 .insight-mark { display: grid; width: 48px; height: 48px; place-items: center; border-radius: 17px 17px 17px 7px; color: #fff; background: linear-gradient(145deg, #9b7faa, #7c6789); box-shadow: 0 10px 22px rgba(121,92,137,.2); font-family: Georgia, serif; font-size: 17px; }
+.insight-mascots .cute-sticker { display: grid; min-height: 0; padding: 5px; justify-items: center; gap: 3px; border-radius: 16px 16px 16px 6px; }
+.insight-mascots .cute-sticker > span { width: 31px; height: 31px; }
+.insight-mascots .cute-sticker > small { font-size: 8px; }
 .insight-content { min-width: 0; }
 .provider-picker { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
 .provider-option { display: grid; min-height: 70px; padding: 13px 15px; border: 1px solid var(--line); border-radius: 17px; color: var(--ink); background: rgba(255,255,255,.74); cursor: pointer; text-align: left; transition: .2s ease; }
@@ -586,6 +615,13 @@ a { color: inherit; text-decoration: none; }
   .weight-entry-row .primary-button { min-height: 50px; }
   .meal-sections { grid-template-columns: 1fr; }
   .insight-card { grid-template-columns: 1fr; }
+  .insight-mascots { grid-template-columns: auto auto; align-items: center; justify-content: start; gap: 10px; }
+  .insight-mascots .cute-sticker { display: inline-flex; padding: 5px 9px 5px 5px; }
+  .cute-sticker { min-height: 43px; padding: 5px 9px 5px 5px; border-width: 2px; border-radius: 15px 15px 15px 6px; }
+  .cute-sticker > span { width: 28px; height: 28px; border-radius: 10px; font-size: 18px; }
+  .cute-sticker > small { font-size: 9px; }
+  .stickered-card { padding-bottom: 69px; }
+  .card-sticker { right: 14px; bottom: 13px; }
   .provider-picker, .ai-connection-grid { grid-template-columns: 1fr; }
   .local-analysis-panel { align-items: stretch; flex-direction: column; }
   .local-analysis-panel button { width: 100%; }

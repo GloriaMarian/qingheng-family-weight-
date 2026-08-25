@@ -779,6 +779,10 @@ export default function WeightApp({ user: initialUser }: { user: AppUser }) {
           ))}
         </nav>
         <div className="sidebar-footer">
+          <div aria-hidden="true" className="cute-sticker sidebar-sticker sticker-bunny">
+            <span>🐰</span>
+            <small>慢慢来，也很好</small>
+          </div>
           <div className="privacy-note">
             <span className="status-dot" />
             你的健康记录默认仅自己可见
@@ -1224,7 +1228,7 @@ function TodayView({
     : `${Number(date.slice(5, 7))}月${Number(date.slice(8, 10))}日`;
   return (
     <div className="dashboard-grid">
-      <section className="card weight-card span-2">
+      <section className="card weight-card stickered-card span-2">
         <div className="card-heading">
           <div><span className="section-kicker">体重记录</span><h2>{dayLabel}称重了吗？</h2></div>
           <div className="completion-pill">{todayWeights.length}/2<span>次</span></div>
@@ -1273,6 +1277,10 @@ function TodayView({
           </button>
         </div>
         <p className="helper-text">尽量在相近时间、相似状态下称重；晚间高于晨间通常是正常日内波动。</p>
+        <div aria-hidden="true" className="cute-sticker card-sticker sticker-bear">
+          <span>🐻</span>
+          <small>稳稳记录</small>
+        </div>
       </section>
 
       <section className="card metrics-card">
@@ -1301,7 +1309,7 @@ function TodayView({
         <p className="fine-print">{special ? "特殊阶段只提供成长或变化参考，不给出减脂热量目标。" : `BMI、基础代谢和体脂率均按${metrics?.dailyWeightCount === 2 ? "早晚两次平均体重" : metrics?.dailyWeightCount === 1 ? "当天唯一一次体重" : "当天体重"}计算；体脂估算可能有约 ±4 个百分点误差。`}</p>
       </section>
 
-      <section className="card meals-card span-2">
+      <section className="card meals-card stickered-card span-2">
         <div className="card-heading">
           <div><span className="section-kicker">餐食记录</span><h2>{dayLabel}吃了什么</h2></div>
           <div className="calorie-total"><strong>{Math.round(metrics?.caloriesToday ?? 0)}</strong><span>千卡</span></div>
@@ -1330,6 +1338,10 @@ function TodayView({
             })}
         </div>
         <button className="add-meal-button" onClick={onOpenMeal} type="button"><span>＋</span> 添加食物</button>
+        <div aria-hidden="true" className="cute-sticker card-sticker sticker-strawberry">
+          <span>🍓</span>
+          <small>好好吃饭</small>
+        </div>
       </section>
 
       <section className="card context-card">
@@ -1348,7 +1360,7 @@ function TodayView({
         </div>
       </section>
 
-      <section className="card exercise-card span-3">
+      <section className="card exercise-card stickered-card span-3">
         <div className="card-heading">
           <div>
             <span className="section-kicker">运动记录</span>
@@ -1420,6 +1432,10 @@ function TodayView({
           <a href="https://pacompendium.com/older-adult-compendium/" rel="noreferrer" target="_blank">60 岁以上标准</a>
           <a href="https://www.nccor.org/tools-youthcompendium/faqs/" rel="noreferrer" target="_blank">儿童青少年标准</a>
         </p>
+        <div aria-hidden="true" className="cute-sticker card-sticker sticker-chick">
+          <span>🐣</span>
+          <small>动一动</small>
+        </div>
       </section>
 
       <section className="card energy-card span-3">
@@ -1461,8 +1477,14 @@ function TodayView({
       </section>
 
       <section className="card insight-card span-3">
-        <div className="insight-mark">
-          {(activeProfile.aiProvider ?? "rules") === "rules" ? "衡" : "AI"}
+        <div className="insight-mascots">
+          <div className="insight-mark">
+            {(activeProfile.aiProvider ?? "rules") === "rules" ? "衡" : "AI"}
+          </div>
+          <div aria-hidden="true" className="cute-sticker sticker-sparkle">
+            <span>✨</span>
+            <small>灵感来了</small>
+          </div>
         </div>
         <div className="insight-content">
           <div aria-label="选择分析方式" className="provider-picker">

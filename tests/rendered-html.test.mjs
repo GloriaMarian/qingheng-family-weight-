@@ -31,7 +31,12 @@ test("构建产物与核心页面已经生成", async () => {
   assert.match(app, /不会写入档案或数据库/);
   assert.match(app, /VIEW_ICONS/);
   assert.match(app, /nav-icon/);
+  assert.match(app, /cute-sticker/);
+  assert.match(app, /慢慢来，也很好/);
+  assert.match(app, /好好吃饭/);
+  assert.match(app, /灵感来了/);
   assert.match(styles, /--pink-soft:/);
+  assert.match(styles, /\.stickered-card/);
   assert.match(styles, /prefers-reduced-motion/);
   assert.doesNotMatch(app, /在线 AI 未配置或暂时不可用时，会自动使用本地分析/);
   assert.doesNotMatch(`${page}${layout}${app}`, /codex-preview|SkeletonPreview|react-loading-skeleton/);
