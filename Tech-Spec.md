@@ -66,3 +66,25 @@ The migration does not alter the legacy project. Before any commit, rollback con
 2. Test the server-side provider credential and endpoint validation helpers.
 3. Run `pnpm lint`, `pnpm test`, `pnpm build`, `pnpm cloudbase:build`, and `pnpm cloudbase:check`.
 4. Verify the Today page on desktop and mobile with local, DeepSeek, and Qwen selections.
+
+## 2026-08-25 Cute Theme Implementation
+
+### Scope
+
+- Keep the existing React structure and introduce only a small `VIEW_ICONS` display map for navigation.
+- Implement the visual system in `app/globals.css` using design tokens, CSS gradients, generated decorative shapes, and Unicode symbols.
+- Reuse existing component classes to give each Today card a distinct pastel accent; do not add an icon package, asset request, or runtime dependency.
+- Keep decorative symbols `aria-hidden`; every navigation action retains its visible text and existing accessible label.
+
+### Responsive and Interaction Rules
+
+- Desktop keeps the fixed sidebar and three-column dashboard.
+- Mobile keeps the four-item bottom navigation and single-column card flow.
+- Interactive controls retain at least the current touch target size, visible keyboard focus, and disabled states.
+- Decorative movement is optional and must be disabled by `prefers-reduced-motion`.
+
+### Verification
+
+1. Run lint, automated tests, primary build, CloudBase frontend build, and CloudBase function syntax check.
+2. Check generated markup for the navigation icon class and new theme copy-independent hooks.
+3. Review responsive breakpoints and overflow-prone grids statically when browser screenshot automation is not authorized.

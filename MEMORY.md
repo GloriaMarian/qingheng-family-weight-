@@ -44,3 +44,9 @@
 - User API keys remain only in current React component memory, are forwarded in `x-provider-api-key`, and are not written to `AppState`, IndexedDB, D1, CloudBase state, documentation, or logs.
 - Qwen custom API hosts are restricted to documented Alibaba Cloud HTTPS domains. Explicit online-provider failures return actionable errors instead of silently substituting local analysis.
 - DeepSeek defaults to `deepseek-v4-flash`; model names may be overridden by non-secret environment variables.
+
+## Visual System
+
+- 2026-08-25: Qingheng uses a warm, cute-but-calm visual direction: cream canvas, strawberry pink, mint, lavender, and peach accents, with rounded cards and soft layered shadows.
+- Navigation and section decoration use small Unicode symbols and CSS shapes instead of a new icon dependency or downloaded decorative assets. Symbols remain supplementary to text labels and do not replace accessible names.
+- Functional hierarchy, health-content readability, desktop/mobile layout structure, and reduced-motion behavior take priority over decoration.

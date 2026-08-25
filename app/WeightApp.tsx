@@ -57,6 +57,13 @@ const VIEW_LABELS: Record<View, string> = {
   history: "记录",
   family: "家人",
 };
+
+const VIEW_ICONS: Record<View, string> = {
+  today: "☀",
+  trends: "⌁",
+  history: "✎",
+  family: "♡",
+};
 const MEAL_LABELS: Record<MealType, string> = {
   breakfast: "早餐",
   lunch: "午餐",
@@ -766,8 +773,8 @@ export default function WeightApp({ user: initialUser }: { user: AppUser }) {
               onClick={() => setView(item)}
               type="button"
             >
-              <span className="nav-dot" />
-              {VIEW_LABELS[item]}
+              <span aria-hidden="true" className="nav-icon">{VIEW_ICONS[item]}</span>
+              <span>{VIEW_LABELS[item]}</span>
             </button>
           ))}
         </nav>
@@ -1004,8 +1011,8 @@ export default function WeightApp({ user: initialUser }: { user: AppUser }) {
             onClick={() => setView(item)}
             type="button"
           >
-            <span />
-            {VIEW_LABELS[item]}
+            <span aria-hidden="true" className="mobile-nav-icon">{VIEW_ICONS[item]}</span>
+            <span>{VIEW_LABELS[item]}</span>
           </button>
         ))}
       </nav>

@@ -61,3 +61,25 @@ Make the Today page AI analysis genuinely user-controlled instead of presenting 
 4. Official-chat handoff copies a complete prompt and supports importing a validated structured result.
 5. Sites and CloudBase API paths enforce the same credential and endpoint rules.
 6. Tests, lint, production build, and CloudBase checks pass before commit.
+
+## 2026-08-25 Cute Visual Refresh
+
+### Objective
+
+Make Qingheng feel warmer, friendlier, and more memorable without weakening the clarity of a daily health tool or changing any data and AI behavior.
+
+### Visual Direction
+
+- Use a warm cream canvas with strawberry pink, mint, lavender, and peach accents.
+- Give cards a soft, rounded "jelly" character through larger radii, layered borders, and restrained pastel shadows.
+- Add small decorative health and daily-life symbols to navigation and section labels without adding an icon dependency or decorative image downloads.
+- Keep the interface calm rather than childish: body copy remains high-contrast, dense forms stay structured, and decoration never replaces a text label.
+
+### Acceptance Criteria
+
+1. Today, Trends, History, and Family navigation share one consistent icon treatment.
+2. Primary Today cards are visually distinguishable by pastel accents while preserving the existing information hierarchy.
+3. Buttons, inputs, badges, modals, and mobile navigation use the same rounded visual language.
+4. Hover and focus feedback remains visible, with motion disabled when reduced motion is preferred.
+5. Desktop and mobile layouts retain their current content order and do not introduce horizontal overflow.
+6. No feature logic, persisted data contract, route, dependency, or deployment setting changes.

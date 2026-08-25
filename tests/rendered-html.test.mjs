@@ -7,10 +7,11 @@ const root = new URL("../", import.meta.url);
 test("构建产物与核心页面已经生成", async () => {
   await access(new URL("../dist/server/index.js", import.meta.url));
   await access(new URL("../public/og.png", import.meta.url));
-  const [page, layout, app] = await Promise.all([
+  const [page, layout, app, styles] = await Promise.all([
     readFile(new URL("../app/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../app/WeightApp.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../app/globals.css", import.meta.url), "utf8"),
   ]);
   assert.match(page, /轻衡/);
   assert.match(layout, /全家都能用的体重日记/);
@@ -28,6 +29,10 @@ test("构建产物与核心页面已经生成", async () => {
   assert.match(app, /用自己的 API Key 分析/);
   assert.match(app, /登录 AI 官网分析/);
   assert.match(app, /不会写入档案或数据库/);
+  assert.match(app, /VIEW_ICONS/);
+  assert.match(app, /nav-icon/);
+  assert.match(styles, /--pink-soft:/);
+  assert.match(styles, /prefers-reduced-motion/);
   assert.doesNotMatch(app, /在线 AI 未配置或暂时不可用时，会自动使用本地分析/);
   assert.doesNotMatch(`${page}${layout}${app}`, /codex-preview|SkeletonPreview|react-loading-skeleton/);
 });
