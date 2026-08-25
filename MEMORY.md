@@ -30,3 +30,10 @@
 - The CloudBase frontend build and `qingheng-api` syntax check pass.
 - ESLint has no errors; `app/WeightApp.tsx` retains one pre-existing `react-hooks/exhaustive-deps` warning near the insight-generation effect. Resolve it only with focused behavior tests because changing those dependencies can alter generation frequency.
 - The 2026-08-24 migration performed no deployment and no production data or route changes.
+
+## Local Entry Points
+
+- The local development URL is `http://localhost:3000/` while the development server is running.
+- The existing public Sites deployment is `https://qingheng-family-weight.annestromjsbsjs62727.chatgpt.site`; it was verified active at version 8 on 2026-08-24 without deploying or changing access.
+- `打开轻衡网站.cmd` starts the local server with the bundled Codex runtime and opens the site in the default browser.
+- The desktop shortcut `打开轻衡网站.lnk` points to that launcher. The repository itself remains at `C:\Users\Administrator\Desktop\git` until the active Codex task releases the directory for a physical rename.
