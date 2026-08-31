@@ -7,6 +7,7 @@
 - 2026-08-24: Migrated the maintainable source state of the Qingheng family weight-management website from `C:\Users\Administrator\Pictures\Screenshots\weight-family-site` into this repository.
 - 2026-08-24: The migration included the legacy repository's current working-tree source changes but excluded its `.git`, dependencies, caches, logs, local environment files, and generated output.
 - 2026-08-24: This repository is now the primary local source of truth for future Qingheng development. The legacy directory remains unchanged as a fallback snapshot.
+- 2026-08-31: Completed the current demo milestone and expanded `README.md` into the GitHub handoff document, covering installation, usage, enforced and recommended inputs, calculated outputs, AI contracts, storage, security, and known limitations. No deployment or remote push was performed.
 
 ## Durable Decisions
 
