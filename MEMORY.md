@@ -38,6 +38,7 @@
 - The local development URL is `http://localhost:3000/` while the development server is running.
 - The existing public Sites deployment is `https://qingheng-family-weight.annestromjsbsjs62727.chatgpt.site`; it was verified active at version 8 on 2026-08-24 without deploying or changing access.
 - The current Tencent CloudBase public application URL is `https://qingheng-family-d5fcrhrgab9855c5-1461373093.ap-shanghai.app.tcloudbase.com/`. After the 2026-08-31 deployment, the homepage and `/api/auth/session` both returned HTTP 200 and the live bundle contained the DeepSeek, Qwen, cute-theme, and sticker changes.
+- The GitHub README identifies the Tencent CloudBase URL as the current domestic production site and instructs users to disable VPNs, accelerators, and overseas proxies before opening or signing in because those routes can interrupt Tencent Cloud connections.
 - On this host, CloudBase CLI uploads can fail with TLS `ECONNRESET` when inherited proxy variables are active. Removing `HTTP_PROXY`, `HTTPS_PROXY`, and `ALL_PROXY` only for the individual upload process allowed the existing Tencent CloudBase deployment to complete; do not change the user's system proxy settings.
 - `打开轻衡网站.cmd` starts the local server with the bundled Codex runtime and opens the site in the default browser.
 - The desktop shortcut `打开轻衡网站.lnk` points to that launcher. The repository itself remains at `C:\Users\Administrator\Desktop\git` until the active Codex task releases the directory for a physical rename.
