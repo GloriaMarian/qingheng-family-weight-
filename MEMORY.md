@@ -8,6 +8,7 @@
 - 2026-08-24: The migration included the legacy repository's current working-tree source changes but excluded its `.git`, dependencies, caches, logs, local environment files, and generated output.
 - 2026-08-24: This repository is now the primary local source of truth for future Qingheng development. The legacy directory remains unchanged as a fallback snapshot.
 - 2026-08-31: Completed the current demo milestone and expanded `README.md` into the GitHub handoff document, covering installation, usage, enforced and recommended inputs, calculated outputs, AI contracts, storage, security, and known limitations. No deployment or remote push was performed.
+- 2026-08-31: Pushed the completed demo and Vite preview fix to `main`, then deployed application commit `27138c5` to the existing Tencent CloudBase environment `qingheng-family-d5fcrhrgab9855c5`. The static frontend and `qingheng-api` function were updated without changing the environment, routes, domain, access, or production data.
 
 ## Durable Decisions
 
@@ -36,6 +37,8 @@
 
 - The local development URL is `http://localhost:3000/` while the development server is running.
 - The existing public Sites deployment is `https://qingheng-family-weight.annestromjsbsjs62727.chatgpt.site`; it was verified active at version 8 on 2026-08-24 without deploying or changing access.
+- The current Tencent CloudBase public application URL is `https://qingheng-family-d5fcrhrgab9855c5-1461373093.ap-shanghai.app.tcloudbase.com/`. After the 2026-08-31 deployment, the homepage and `/api/auth/session` both returned HTTP 200 and the live bundle contained the DeepSeek, Qwen, cute-theme, and sticker changes.
+- On this host, CloudBase CLI uploads can fail with TLS `ECONNRESET` when inherited proxy variables are active. Removing `HTTP_PROXY`, `HTTPS_PROXY`, and `ALL_PROXY` only for the individual upload process allowed the existing Tencent CloudBase deployment to complete; do not change the user's system proxy settings.
 - `打开轻衡网站.cmd` starts the local server with the bundled Codex runtime and opens the site in the default browser.
 - The desktop shortcut `打开轻衡网站.lnk` points to that launcher. The repository itself remains at `C:\Users\Administrator\Desktop\git` until the active Codex task releases the directory for a physical rename.
 
