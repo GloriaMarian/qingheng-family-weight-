@@ -18,6 +18,7 @@
 - The application currently retains both Sites/Cloudflare and Tencent CloudBase adapters; platform consolidation requires a separate explicit decision.
 - Existing production resources and URLs must not be changed merely because the source moved repositories.
 - Secrets and local environment files must not be committed.
+- The repository is licensed under the MIT License with copyright attributed to Gloria Marian, beginning in 2026.
 
 ## Architecture Baseline
 
